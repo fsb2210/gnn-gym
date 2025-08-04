@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gnn-gym"
+version = "0.1.0"
+description = "A CLI tool for running GNN experiments"
+readme = "README.md"
+authors = [{ name = "fsb2210", email = "noone@nowhere.com" }]
+license = { text = "MIT" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.9"
+dependencies = []
+
+[project.scripts]
+gnn = "gnn_gym:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
