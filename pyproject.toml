@@ -15,7 +15,10 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 requires-python = ">=3.9"
-dependencies = []
+dependencies = [
+    "numpy",
+    "torch",
+]
 
 [project.scripts]
 gnn = "gnn_gym:main"
