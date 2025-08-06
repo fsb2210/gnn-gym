@@ -1,5 +1,5 @@
 """
-Simple graph neural network
+Graph convolutional network example
 """
 
 from typing import Any, Dict
@@ -11,13 +11,14 @@ import torch.optim as optim
 
 def get_config() -> Dict:
     return {
-        "name": "Simple Graph neural network on an undirected graph",
+        "name": "Graph convolutional network (GCN) on an undirected graph",
         "description": "Example of a GCN neural network",
         "model": "GCN",
         "task": "node_classification",
         "num_nodes": 4,
         "num_edges": 8,
         "features_dim": 3,
+        "hidden_features": 6,
         "activation": "relu",
         "epochs": 2,
     }
@@ -82,7 +83,7 @@ def train(ds, model, epochs) -> Any:
         accuracies.append(acc)
         outputs.append(z)
 
-        print(f'Epoch {epoch+1:>3} | loss: {loss:.2f} | acc: {acc*100:.2f}%')
+        print(f"Epoch {epoch+1:>3} | loss: {loss:.2f} | acc: {acc*100:.2f}%")
 
 
 def run(config: Dict) -> None:
@@ -90,21 +91,24 @@ def run(config: Dict) -> None:
     ds = create_dataset(config=config)
 
     # create graph neural network
-    graph_nn = SimpleGNN(input_features=config["features_dim"],  output_features=config["features_dim"], activation=config["activation"])
+    model = GCN(input_features=config["features_dim"], hidden_features=config["hidden_features"], output_features=config["features_dim"], activation=config["activation"])
+    print(f"GCN initialized with structure:\n{model}\n")
 
     # train gnn
-    # train(graph_nn, ds, config["epochs"])
+    print("Training model...")
+    train(ds, model, config["epochs"])
 
     # make inference
-    # infer(graph_nn, ds)
+    # infer(model, ds)
 
-class SimpleGNN(nn.Module):
+class GCN(nn.Module):
     """
     Simple GNN based on the GCN model of Kipf et al. (2016)
     """
-    def __init__(self, input_features, output_features, activation="", **kwargs) -> None:
-        super(SimpleGNN, self).__init__()
+    def __init__(self, input_features, hidden_features, output_features, activation="", **kwargs) -> None:
+        super(GCN, self).__init__()
         self.input_features = input_features
+        self.hidden_features = hidden_features
         self.output_features = output_features
         if activation.lower() == "relu":
             self.activation_fnc = nn.ReLU
@@ -113,7 +117,8 @@ class SimpleGNN(nn.Module):
         else:
             raise ValueError(f"Activation function ({activation}) not supported")
 
-        self.conv = GCNLayer(in_channels=input_features, out_channels=output_features, **kwargs)
+        self.conv1 = GCNLayer(in_channels=input_features, out_channels=hidden_features, **kwargs)
+        self.conv2 = GCNLayer(in_channels=hidden_features, out_channels=output_features, **kwargs)
         self.act = self.activation_fnc()
 
     def forward(self, x, edge_index):
@@ -128,9 +133,21 @@ class SimpleGNN(nn.Module):
             with the argmax function on the output features of the nodes
 
         """
-        x = self.conv(x, edge_index)
+        x = self.conv1(x, edge_index)
+        x = self.conv2(x, edge_index)
         logits = self.act(x)
         return logits
 
     def __call__(self, x, edge_index):
         return self.forward(x, edge_index)
+
+    def __repr__(self):
+        extra_lines = []
+        child_lines = []
+        for key, module in self._modules.items():
+            mod_str = repr(module)
+            child_lines.append("  (" + key + "): " + mod_str)
+        lines = extra_lines + child_lines
+        main_str = "  " + self._get_name() + ":"
+        main_str += "\n  " + "\n  ".join(lines)
+        return main_str
