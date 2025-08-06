@@ -121,7 +121,7 @@ class GCN(nn.Module):
         self.conv2 = GCNLayer(in_channels=hidden_features, out_channels=output_features, **kwargs)
         self.act = self.activation_fnc()
 
-    def forward(self, x, edge_index):
+    def __call__(self, x, edge_index):
         """Forward pass
 
         Args:
@@ -137,9 +137,6 @@ class GCN(nn.Module):
         x = self.conv2(x, edge_index)
         logits = self.act(x)
         return logits
-
-    def __call__(self, x, edge_index):
-        return self.forward(x, edge_index)
 
     def __repr__(self):
         extra_lines = []
