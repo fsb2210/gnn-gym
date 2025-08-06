@@ -7,6 +7,7 @@ from ..nn import GCNLayer
 
 import torch
 import torch.nn as nn
+import torch.optim as optim
 
 def get_config() -> Dict:
     return {
@@ -31,7 +32,7 @@ def create_dataset(config: Dict) -> Dict:
     # input tensor of dims [N, # features]
     x = torch.randn(N, n_feats)
     # output tensor of dim [N,]
-    y = torch.randint(0, 4, (N,))
+    y = torch.randint(0, 3, (N,))
     # edge indices with shape [2, # edges]
     edge_index = torch.tensor([
         [1, 0, 2, 3, 1, 3, 1, 2],
@@ -47,13 +48,55 @@ def infer(model, ds: Dict) -> Any:
     z = model.forward(x=ds.get("x"), edge_index=ds.get("edge_index"))
     print(f"out = {z}, shape = {z.shape}")
 
-def train(model, ds: Dict) -> Any:
-    raise NotImplementedError("training method not ready yet")
+def accuracy(pred, y):
+    return (pred == y).sum()/len(y)
+
+def train(ds, model, epochs) -> Any:
+
+    optimizer = optim.Adam(model.parameters())
+    lossfn = nn.CrossEntropyLoss()
+
+    losses, accuracies, outputs = [], [], []
+    for epoch in range(epochs):
+        # clear grads
+        optimizer.zero_grad()
+
+        # forward pass
+        z = model(x=ds.get("x"), edge_index=ds.get("edge_index"))
+
+        # loss function
+        loss = lossfn(z, ds.get("y"))
+
+        # accuracy
+        pred = z.argmax(dim=1)
+        acc = accuracy(pred, ds.get("y"))
+
+        # gradients
+        loss.backward()
+
+        # tune parameters
+        optimizer.step()
+
+        # store data
+        losses.append(loss)
+        accuracies.append(acc)
+        outputs.append(z)
+
+        print(f'Epoch {epoch+1:>3} | loss: {loss:.2f} | acc: {acc*100:.2f}%')
+
 
 def run(config: Dict) -> None:
+    # create dataset
     ds = create_dataset(config=config)
+
+    # create graph neural network
     graph_nn = SimpleGNN(input_features=config["features_dim"],  output_features=config["features_dim"], activation=config["activation"])
-    infer(graph_nn, ds)
+
+    # train gnn
+    # train(graph_nn, ds, config["epochs"])
+
+    # make inference
+    # infer(graph_nn, ds)
 
 class SimpleGNN(nn.Module):
     """
@@ -86,7 +129,8 @@ class SimpleGNN(nn.Module):
 
         """
         x = self.conv(x, edge_index)
-        return torch.argmax(self.act(x), dim=1)
+        logits = self.act(x)
+        return logits
 
     def __call__(self, x, edge_index):
         return self.forward(x, edge_index)
