@@ -22,7 +22,7 @@ def execute_test_case(module, config_override=None):
     """
     Generic function to run any test case module that follows the interface.
     """
-    header = f"\n🚀 Running test case: {module.__name__}"
+    header = f"\n- Running test case: {module.__name__}"
     print(header)
     print("=" * len(header))
 
@@ -31,14 +31,14 @@ def execute_test_case(module, config_override=None):
     if config_override:
         config.update(config_override)
 
-    print("📋 Test Case Info:")
+    print("- Test Case Info:")
     for key, value in config.items():
         print(f"  {key}: {value}")
 
     # Step 2: Run the test case (GNN creation/training in future)
-    print("\n🧠 Running GNN pipeline...")
+    print("\n- Running GNN pipeline...")
     try:
         results = module.run(config=config)
-        print(f"\n✅ Test completed. Results: {results}")
+        print(f"\n- Test completed. Results: {results}")
     except Exception as e:
-        print(f"\n❌ Error during GNN execution: {e}")
+        print(f"\n- Error during GNN execution: {e}")

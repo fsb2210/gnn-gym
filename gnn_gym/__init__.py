@@ -34,7 +34,7 @@ def main() -> None:
     if opts.override:
         for item in opts.override:
             if "=" not in item:
-                print(f"⚠️ Invalid override format: {item}")
+                print(f"- Invalid override format: {item}")
                 continue
             key, value = item.split("=", 1)
             # try to cast to int/float, fallback to string
