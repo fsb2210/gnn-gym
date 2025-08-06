@@ -20,7 +20,7 @@ class GCNLayer(nn.Module):
         if self.add_bias:
             self.bias = nn.Parameter(torch.randn(out_channels))
 
-    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
+    def __call__(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
         """
         Args:
             x (torch.Tensor): node feature matrix of shape [N, in_channels]
@@ -73,9 +73,6 @@ class GCNLayer(nn.Module):
             print(f"<out {out.dtype} Tensor with shape = {out.shape} on {out.device}>")
 
         return out
-
-    def __call__(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
-        return self.forward(x, edge_index)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}: ({self.linear.in_features}, {self.linear.out_features})"
