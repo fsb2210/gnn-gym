@@ -5,6 +5,8 @@ Graph convolutional layer
 import torch
 import torch.nn as nn
 
+from ..utils import DEBUG
+
 class GCNLayer(nn.Module):
     """
     Applies a graph convolutional layer as described in Kipf et al. (2016)
@@ -43,8 +45,7 @@ class GCNLayer(nn.Module):
         col = edge_index[1]  # source nodes (j)
 
         # 3 - compute node degrees (with self-loops), thus deg[i] = number of incoming edges to node i
-        deg = torch.zeros(N, device=x.device, dtype=torch.float)
-        deg.scatter_add_(0, row, torch.ones_like(row, dtype=torch.float))
+        deg = torch.bincount(row, minlength=N)
 
         # 4 - compute normalization: norm = 1 / sqrt(deg[i]) / sqrt(deg[j])
         deg_i = deg[row]  # degree of destination node i
@@ -64,6 +65,12 @@ class GCNLayer(nn.Module):
         # 6 - add bias
         if self.add_bias:
             out += self.bias
+
+        if DEBUG > 2:
+            print(f"<x {x.dtype} Tensor with shape = {x.shape} on {x.device}>")
+            print(f"<edge_index {edge_index.dtype} Tensor with shape = {edge_index.shape} on {edge_index.device}>")
+            print(f"<norm {norm.dtype} Tensor with shape = {norm.shape} on {norm.device}>")
+            print(f"<out {out.dtype} Tensor with shape = {out.shape} on {out.device}>")
 
         return out
 
