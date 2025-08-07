@@ -5,7 +5,7 @@ Graph convolutional layer
 import torch
 import torch.nn as nn
 
-from ..utils import DEBUG
+from gnn_gym.utils import DEBUG
 
 class GCNLayer(nn.Module):
     """

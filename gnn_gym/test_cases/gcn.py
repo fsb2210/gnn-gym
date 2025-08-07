@@ -3,11 +3,12 @@ Graph convolutional network example
 """
 
 from typing import Any, Dict
-from ..nn import GCNLayer
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
+
+from gnn_gym.nn import GCNLayer
 
 def get_config() -> Dict:
     return {
@@ -95,7 +96,7 @@ def run(config: Dict) -> None:
     print(f"GCN initialized with structure:\n{model}\n")
 
     # train gnn
-    print("Training model...")
+    print("- Training model...")
     train(ds, model, config["epochs"])
 
     # make inference

@@ -7,7 +7,7 @@ Exercise with examples how a graph neural network (GNN) works
 import argparse
 import sys
 
-from .test_cases import load_test_case, execute_test_case
+from gnn_gym.test_cases import load_test_case, execute_test_case
 
 def main() -> None:
     """
