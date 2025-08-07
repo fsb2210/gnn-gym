@@ -2,94 +2,110 @@
 Graph convolutional network example
 """
 
-from typing import Any, Dict
+from typing import Dict
 
 import torch.nn as nn
-import torch.optim as optim
 
+from gnn_gym.utils import DEBUG
 from gnn_gym.nn import GCNLayer
-from gnn_gym.datasets import karateclub
+from gnn_gym.test_cases.utils import create_criterion, create_optimizer, load_dataset, train
 
 def get_config() -> Dict:
     return {
-        "name": "Graph convolutional network (GCN) on an undirected graph",
-        "description": "Example of a GCN neural network",
-        "model": "GCN",
-        "dataset": "",
-        "task": "node_classification",
-        "features_dim": -1,
-        "hidden_features": -1,
-        "activation": "relu",
-        "epochs": 1,
+        "name": "Graph neural network - GCN",
+        "description": "Train a GNN on the Karate Club dataset",
+        "dataset": "karate",
+        "model": {
+            "type": "GCN",
+            "hidden_dim": 32,
+            "activation": "relu",
+            "out_channels": 4,  # number of classes
+        },
+        "training": {
+            "num_epochs": 1,
+            "verbose": True,
+        },
+        "optimizer": {
+            "type": "Adam",
+            "lr": 0.01,
+            "weight_decay": 5e-4,
+            "betas": [0.9, 0.999],
+            "eps": 1e-8,
+        },
+        "criterion": {
+            "type": "CrossEntropyLoss",
+            "weight": None,
+            "reduction": "mean"
+        },
     }
 
-def load_dataset(config: Dict) -> Dict:
-    dataset_name: str = config.get("dataset", "unknown")
-    if dataset_name == "karate":
-        ds = karateclub()
-    else:
-        raise ValueError("only dataset available is KarateClub")
-    return ds
+def run(config_override: Dict) -> None:
+    # load config
+    config = get_config()
 
-def infer(model, ds: Dict) -> Any:
-    z = model.forward(x=ds.get("x"), edge_index=ds.get("edge_index"))
-    print(f"out = {z}, shape = {z.shape}")
-
-def accuracy(pred, y):
-    return (pred == y).sum()/len(y)
-
-def train(ds, model, epochs) -> Any:
-
-    optimizer = optim.Adam(model.parameters(), lr=0.01)
-    lossfn = nn.CrossEntropyLoss()
-
-    losses, accuracies, outputs = [], [], []
-    for epoch in range(epochs):
-        # clear grads
-        optimizer.zero_grad()
-
-        # forward pass
-        z = model(x=ds.get("x"), edge_index=ds.get("edge_index"))
-
-        # loss function
-        loss = lossfn(z, ds.get("y"))
-
-        # accuracy
-        pred = z.argmax(dim=1)
-        acc = accuracy(pred, ds.get("y"))
-
-        # gradients
-        loss.backward()
-
-        # tune parameters
-        optimizer.step()
-
-        # store data
-        losses.append(loss)
-        accuracies.append(acc)
-        outputs.append(z)
-
-        print(f"Epoch {epoch+1:>3} | loss: {loss:.2f} | acc: {acc*100:.2f}%")
-
-def run(config: Dict) -> None:
     # create dataset
-    ds = load_dataset(config=config)
+    ds = load_dataset(dataset_name=config.get("dataset", ""))
 
-    # update config values
-    for key, value in ds.items():
-        if key == "features_dim":
-            config[key] = value
+    # Apply overrides (supports nested keys like 'optimizer.lr')
+    if config_override:
+        apply_nested_override(config, config_override)
+
+    if DEBUG >= 1:
+        print("- Configuration Summary:")
+        _print_config(config)
 
     # create graph neural network
-    model = GCN(input_features=config["features_dim"], hidden_features=config["hidden_features"], output_features=config["features_dim"], activation=config["activation"])
-    print(f"GCN initialized with structure:\n{model}\n")
+    model = GCN(input_features=ds["features_dim"], hidden_features=config["hidden_features"], output_features=ds["features_dim"], activation=config["model"]["activation"])
+    print(f"- GCN initialized with structure:\n{model}\n")
+
+    # (c) Create optimizer and criterion
+    print("- Initializing optimizer and loss function...")
+    optimizer = create_optimizer(model.parameters(), config["optimizer"])
+    criterion = create_criterion(config["criterion"])
+
+    print(f"  Optimizer config: {dict(config['optimizer'])}")
+    print(f"  Criterion config: {dict(config['criterion'])}", end="\n\n")
 
     # train gnn
     print("- Training model...")
-    train(ds.get("data"), model, config["epochs"])
+    train(ds.get("data"), model, config["training"]["num_epochs"], config["training"]["verbose"], optimizer, criterion)
 
-    # make inference
-    # infer(model, ds)
+
+def apply_nested_override(config: dict, overrides: dict):
+    """
+    Apply overrides that may include dot-separated keys like 'optimizer.lr'.
+    Example: {'optimizer.lr': 0.005, 'training.num_epochs': 50}
+    """
+    if isinstance(overrides, list):
+        # Convert ['key=value', ...] to dict
+        override_dict = {}
+        for item in overrides:
+            if '=' not in item:
+                continue
+            k, v = item.split('=', 1)
+            try:
+                v = float(v) if '.' in v else int(v)
+            except ValueError:
+                pass
+            override_dict[k] = v
+    else:
+        override_dict = overrides
+
+    for key, value in override_dict.items():
+        keys = key.split('.')
+        d = config
+        for k in keys[:-1]:
+            if k not in d:
+                d[k] = {}
+            d = d[k]
+        d[keys[-1]] = value
+
+def _print_config(config: dict, indent=2):
+    """
+    Pretty print the config dictionary.
+    """
+    import json
+    print(json.dumps(config, indent=indent, ensure_ascii=False), end="\n\n")
 
 class GCN(nn.Module):
     """
