@@ -41,26 +41,26 @@ class GCNLayer(nn.Module):
             loop_edge = torch.stack([loop, loop], dim=0)  # [2, N]
             edge_index = torch.cat([edge_index, loop_edge], dim=1)  # [2, E + N]
 
-        row = edge_index[0]  # destination nodes (i)
-        col = edge_index[1]  # source nodes (j)
+        row = edge_index[0]  # source nodes (j)
+        col = edge_index[1]  # destination nodes (i)
 
         # 3 - compute node degrees (with self-loops), thus deg[i] = number of incoming edges to node i
-        deg = torch.bincount(row, minlength=N)
+        deg = torch.bincount(col, minlength=N)
 
         # 4 - compute normalization: norm = 1 / sqrt(deg[i]) / sqrt(deg[j])
-        deg_i = deg[row]  # degree of destination node i
-        deg_j = deg[col]  # degree of source node j
+        deg_i = deg[col]  # degree of destination node i
+        deg_j = deg[row]  # degree of source node j
         norm = 1.0 / (deg_i.sqrt() * deg_j.sqrt())  # [E + N]
 
         # 5 - message passing
-        x_j = x[col]  # sender features, [E + N, out_channels]
+        x_j = x[row]  # sender features, [E + N, out_channels]
 
         # scale messages
         messages = norm.view(-1, 1) * x_j  # [E + N, out_channels]
 
         # aggregate messages at each node
         out = torch.zeros(N, x.size(1), device=x.device)
-        out.scatter_add_(0, row.unsqueeze(-1).expand_as(messages), messages)
+        out.scatter_add_(0, col.unsqueeze(-1).expand_as(messages), messages)
 
         # 6 - add bias
         if self.add_bias:
