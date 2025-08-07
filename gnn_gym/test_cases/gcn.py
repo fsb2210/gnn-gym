@@ -4,47 +4,32 @@ Graph convolutional network example
 
 from typing import Any, Dict
 
-import torch
 import torch.nn as nn
 import torch.optim as optim
 
 from gnn_gym.nn import GCNLayer
+from gnn_gym.datasets import karateclub
 
 def get_config() -> Dict:
     return {
         "name": "Graph convolutional network (GCN) on an undirected graph",
         "description": "Example of a GCN neural network",
         "model": "GCN",
+        "dataset": "",
         "task": "node_classification",
-        "num_nodes": 4,
-        "num_edges": 8,
-        "features_dim": 3,
-        "hidden_features": 6,
+        "features_dim": -1,
+        "hidden_features": -1,
         "activation": "relu",
-        "epochs": 2,
+        "epochs": 1,
     }
 
-def create_dataset(config: Dict) -> Dict:
-    N: int = config.get("num_nodes", -1)
-    n_feats: int = config.get("features_dim", -1)
-    # check for >= 0 values
-    if N <= 0 or n_feats <= 0:
-        raise ValueError(f"Either N={N} or n_feats={n_feats} is <= 0!")
-
-    # input tensor of dims [N, # features]
-    x = torch.randn(N, n_feats)
-    # output tensor of dim [N,]
-    y = torch.randint(0, 3, (N,))
-    # edge indices with shape [2, # edges]
-    edge_index = torch.tensor([
-        [1, 0, 2, 3, 1, 3, 1, 2],
-        [0, 1, 1, 1, 2, 2, 3, 3],
-    ], dtype=torch.int64)
-    return {
-        "x": x,
-        "y": y,
-        "edge_index": edge_index,
-    }
+def load_dataset(config: Dict) -> Dict:
+    dataset_name: str = config.get("dataset", "unknown")
+    if dataset_name == "karate":
+        ds = karateclub()
+    else:
+        raise ValueError("only dataset available is KarateClub")
+    return ds
 
 def infer(model, ds: Dict) -> Any:
     z = model.forward(x=ds.get("x"), edge_index=ds.get("edge_index"))
@@ -55,7 +40,7 @@ def accuracy(pred, y):
 
 def train(ds, model, epochs) -> Any:
 
-    optimizer = optim.Adam(model.parameters())
+    optimizer = optim.Adam(model.parameters(), lr=0.01)
     lossfn = nn.CrossEntropyLoss()
 
     losses, accuracies, outputs = [], [], []
@@ -86,10 +71,14 @@ def train(ds, model, epochs) -> Any:
 
         print(f"Epoch {epoch+1:>3} | loss: {loss:.2f} | acc: {acc*100:.2f}%")
 
-
 def run(config: Dict) -> None:
     # create dataset
-    ds = create_dataset(config=config)
+    ds = load_dataset(config=config)
+
+    # update config values
+    for key, value in ds.items():
+        if key == "features_dim":
+            config[key] = value
 
     # create graph neural network
     model = GCN(input_features=config["features_dim"], hidden_features=config["hidden_features"], output_features=config["features_dim"], activation=config["activation"])
@@ -97,7 +86,7 @@ def run(config: Dict) -> None:
 
     # train gnn
     print("- Training model...")
-    train(ds, model, config["epochs"])
+    train(ds.get("data"), model, config["epochs"])
 
     # make inference
     # infer(model, ds)
